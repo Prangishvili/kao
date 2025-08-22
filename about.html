@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAO Furniture - About</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .left-section {
+            flex: 1;
+            background: #ffffff;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+        
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 200vh; /* Double height for scroll */
+        }
+        
+        .left-section img {
+            width: 100%;
+            height: 50%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .right-section {
+            width: 450px;
+            background: #ffffff;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.1;
+            text-align: right;
+            color: #000000;
+        }
+        
+        .content {
+            width: 100%;
+            max-width: 360px;
+        }
+        
+        .content h1 {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 30px;
+            color: #000000;
+            line-height: 1.4;
+        }
+        
+        .content p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #000000;
+        }
+        
+        .content .social-link {
+            color: #000000;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .content .social-link:hover {
+            text-decoration: underline;
+        }
+        
+        .content .offer {
+            margin-top: 30px;
+            font-weight: 500;
+        }
+        
+        .content .offer strong {
+            font-weight: 700;
+        }
+        
+        .content .location {
+            margin-top: 30px;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .left-section {
+                min-height: 50vh;
+                height: 50vh;
+                overflow-y: auto;
+            }
+            
+            .image-container {
+                height: auto;
+            }
+            
+            .left-section img {
+                height: auto;
+            }
+            
+            .right-section {
+                width: 100%;
+                padding: 10px;
+                position: relative;
+                height: auto;
+            }
+            
+            .logo {
+                font-size: 24px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .right-section {
+                padding: 10px;
+            }
+            
+            .logo {
+                font-size: 20px;
+                top: 20px;
+                right: 20px;
+            }
+            
+            .content h1 {
+                font-size: 16px;
+            }
+            
+            .content p {
+                font-size: 14px;
+            }
+        }
+        /* Overlay Menu Styles - Consistent with other pages */
+        .subtitle-text {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #000000;
+            font-family: "Object Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 30px;
+            font-style: normal;
+            font-weight: 700;
+            line-height: 32px;
+            width: 355px;
+            height: 98px;
+            flex-shrink: 0;
+            text-align: center;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+
+        .subtitle-text:hover {
+            opacity: 0.8;
+        }
+
+        .overlay-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+            z-index: 20000;
+        }
+
+        .overlay-menu.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .overlay-content {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-items {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .menu-item {
+            font-family: 'Object Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-style: normal;
+            font-weight: 700;
+            font-size: 72px;
+            line-height: 89px;
+            text-align: center;
+            color: #000000;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .menu-item:hover {
+            transform: translateX(10px);
+            opacity: 0.8;
+        }
+
+        .menu-item::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: #000000;
+            transition: width 0.3s ease;
+        }
+
+        .menu-item:hover::after {
+            width: 100%;
+        }
+
+        .overlay-close {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            background: transparent;
+            border: none;
+            font-size: 40px;
+            color: #000000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-family: "Object Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 300;
+            z-index: 25000;
+        }
+
+        .overlay-close:hover {
+            transform: translateX(-50%) rotate(90deg) scale(1.1);
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .menu-item {
+                font-size: 48px;
+                line-height: 60px;
+            }
+            
+            .menu-items {
+                gap: 15px;
+            }
+            
+            .overlay-close {
+                width: 50px;
+                height: 50px;
+                font-size: 35px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .menu-item {
+                font-size: 36px;
+                line-height: 45px;
+            }
+            
+            .menu-items {
+                gap: 12px;
+            }
+            
+            .overlay-close {
+                width: 45px;
+                height: 45px;
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="subtitle-text" id="subtitle-trigger">Furniture Studio Woodworking School Tbilisi, Georgia.</div>
+
+    <!-- Overlay Menu -->
+    <div class="overlay-menu" id="overlay-menu">
+        <div class="overlay-content">
+            <div class="menu-items">
+                <a href="index.html" class="menu-item">Home</a>
+                <a href="about.html" class="menu-item">About</a>
+                <a href="projects.html" class="menu-item">Project</a>
+                <a href="#" class="menu-item">Contact</a>
+            </div>
+            <button class="overlay-close" id="overlay-close">×</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="left-section">
+            <div class="image-container">
+                <img src="assets/img1.jpg" alt="Tea tray furniture piece">
+                <img src="assets/img2.jpg" alt="Furniture detail">
+            </div>
+        </div>
+        <div class="right-section">
+            <div class="logo">
+                .KAO<br>FURNITURE
+            </div>
+            <div class="content">
+                <h1>TEA TRAY | New Georgian / Japanese brand in Maizen.</h1>
+                
+                <p>Introducing a unique collaboration between Japan and Georgia—exclusively in Maizen.</p>
+                
+                <p>Designed by Japanese designer NAO <a href="#" class="social-link">@designstudionao</a> , and handcrafted by Georgian furniture maker KAO <a href="#" class="social-link">@kao.furniture</a> , this tea tray blends traditional Japanese joinery with the natural beauty of Georgian oak.</p>
+                
+                <p>Relying on traditional Japanese joinery.</p>
+                
+                <p>Made in Georgia with pride—infused with Japanese design essence.</p>
+                
+                <p class="offer"><strong>Limited Launch Offer</strong> : First 10 units at a special price.</p>
+                
+                <p class="location">Visit Maizen at Zakaria Paliashvili #110<br>Working hours showroom: 11:00-21:00</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script type="module" src="js/about.js?v=8"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch localhost:3000 in Firefox",
+            "type": "firefox",
+            "request": "launch",
+            "reAttach": true,
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}",
+            "firefoxExecutable": "/Applications/Firefox.app/Contents/MacOS/firefox"
+        },
+        {
+            "name": "Attach to Firefox",
+            "type": "firefox",
+            "request": "attach",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}"
+        }
+    ]
+} 
