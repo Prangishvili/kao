@@ -115,6 +115,13 @@ let autoScrollDuration = 3000; // 3 seconds for smooth scroll
 let scrollDisabled = false;
 let modelScrollCompleted = false; // Track if model scroll has completed
 
+// New scroll behavior system
+let isModelAnimationPlaying = false; // Track if model animation is currently playing
+let modelAnimationProgress = 0; // Current animation progress (0-1)
+let userScrollTriggered = false; // Track if user has triggered scroll
+let animationDirection = 1; // 1 for forward, -1 for reverse
+let lastScrollY = 0; // Track last scroll position for direction detection
+
 /**
  * Loading Animation Functions
  */
@@ -403,7 +410,10 @@ function initDragControls() {
     if (camera && model) {
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObject(model, true);
-      updateMouseInfo(event, intersects);
+      // Update mouse info only if not hidden
+      if (!mouseInfo || !mouseInfo.dataset.hidden) {
+        updateMouseInfo(event, intersects);
+      }
     }
     
     // Handle rotation dragging
@@ -429,14 +439,14 @@ function initDragControls() {
   // Pointer leave event
   canvas.addEventListener('pointerleave', () => {
     isDragging = false;
-    if (mouseInfo) {
+    if (mouseInfo && !mouseInfo.dataset.hidden) {
       mouseInfo.style.display = 'none';
     }
   });
   
   // Pointer enter event
   canvas.addEventListener('pointerenter', () => {
-    if (mouseInfo) {
+    if (mouseInfo && !mouseInfo.dataset.hidden) {
       mouseInfo.style.display = 'block';
     }
   });
@@ -459,7 +469,7 @@ function initScrollAnimation() {
 
   // Enable scrolling on the body (only if animations are found)
   if (scrollAnimation && animations.length > 0) {
-    document.body.style.height = '300vh'; // 300% height for 3 distinct stages
+    document.body.style.height = '400vh'; // 400% height: 100vh (initial) + 200vh (image) + 100vh (text)
     document.body.style.overflowY = 'auto';
     document.body.style.overflow = 'auto'; // Override any existing overflow hidden
     
@@ -468,6 +478,10 @@ function initScrollAnimation() {
     document.body.style.setProperty('-webkit-scrollbar', 'display: none');
     document.documentElement.style.setProperty('scrollbar-width', 'none');
     document.documentElement.style.setProperty('-webkit-scrollbar', 'display: none');
+    
+    // Enable scrolling from the start
+    document.body.style.overflow = 'auto';
+    console.log('🔓 Scroll enabled - model animation will sync with scroll progress');
   }
 
   // Step 2: Setup scroll-triggered animation
@@ -482,12 +496,29 @@ function initScrollAnimation() {
         end: "bottom bottom",
         scrub: 1, // Smooth scrubbing
         onUpdate: (self) => {
-                      // Skip GSAP updates during model-scroll to prevent conflicts
-            if (autoScrollStarted) return;
+          // Skip GSAP updates during model-scroll to prevent conflicts
+          if (autoScrollStarted) return;
           
           if (isScrollAnimationEnabled && scrollAnimation && mixer && !scrollDisabled) {
             // Update scroll percentage
             scrollPercent = self.progress;
+            
+                         // Handle new scroll behavior: detect first scroll and play animation to 100%
+             if (!modelScrollCompleted) {
+               // Detect first scroll event
+               if (!userScrollTriggered && scrollPercent > 0) {
+                 userScrollTriggered = true;
+                 console.log('⬇️ First scroll detected (GSAP) - starting model animation to 100%');
+                 
+                 // Prevent page from scrolling further
+                 document.body.style.overflow = 'hidden';
+                 
+                 // Start the animation that plays to 100%
+                 startModelAnimationTo100();
+               }
+               
+               return; // Exit early - don't process other scroll logic during model animation
+             }
             
             // Stop auto-rotation when scroll animation is active
             if (scrollPercent > 0) {
@@ -497,16 +528,12 @@ function initScrollAnimation() {
               if (rotationToggle) rotationToggle.checked = false;
             }
             
-            // Start model-scroll on first scroll (only once)
-            if (scrollPercent > 0 && !autoScrollStarted && !modelScrollCompleted) {
-              startAutoScroll();
-            }
-            
-            // Stage 1: Auto animation (0-33% scroll)
-            if (scrollPercent <= 0.33) {
-              // Model animation completes at 100% when page scroll reaches 33%
-              // This means animation is 3x more sensitive to scroll input
-              const animationProgress = Math.min(scrollPercent / 0.33, 1); // 0 to 1
+            // Stage 1: Auto animation (0-25% scroll) - First 100vh for 3D model
+            // Only update model if animation is not completed
+            if (scrollPercent <= 0.25 && !modelScrollCompleted) {
+              // Model animation completes at 100% when page scroll reaches 25%
+              // This means animation is 4x more sensitive to scroll input
+              const animationProgress = Math.min(scrollPercent / 0.25, 1); // 0 to 1
               const animationTime = animationProgress * animationDuration;
               scrollAnimation.time = animationTime;
               
@@ -541,35 +568,34 @@ function initScrollAnimation() {
               }
             }
             
-            // Stage 2: Image animation (33-66% scroll)
-            if (scrollPercent >= 0.33 && !imageScrollStarted) {
+            // Stage 2: Image animation (25-75% scroll) - 200vh image section
+            if (scrollPercent >= 0.25 && !imageScrollStarted) {
               imageScrollStarted = true;
               console.log('🖼️ Starting scroll-controlled image animation');
             }
             
-            if (imageScrollStarted && imageOverlay && scrollPercent >= 0.33) {
-              // Calculate image progress from 33% to 66% scroll range
-              const stage2Progress = (scrollPercent - 0.33) / 0.33; // 0 to 1
+            if (imageScrollStarted && imageOverlay && scrollPercent >= 0.25) {
+              // Calculate image progress from 25% to 75% scroll range (50% total range)
+              const stage2Progress = (scrollPercent - 0.25) / 0.50; // 0 to 1
               updateImageOverlayPosition(stage2Progress);
             }
             
-            // Stage 3: Text animation (66-100% scroll)
-            if (scrollPercent >= 0.66 && !introTextActive) {
+            // Stage 3: Text animation (75-100% scroll) - 100vh text section
+            if (scrollPercent >= 0.75 && !introTextActive) {
               introTextActive = true;
-              createIntroTextSection();
               console.log('📝 Starting introduction text section');
             }
             
-            if (introTextActive && introTextSection && scrollPercent >= 0.66) {
-              // Calculate text scroll progress from 66% to 100% scroll range
-              const stage3Progress = (scrollPercent - 0.66) / 0.34; // 0 to 1
+            if (introTextActive && introTextSection && scrollPercent >= 0.75) {
+              // Calculate text scroll progress from 75% to 100% scroll range (25% total range)
+              const stage3Progress = (scrollPercent - 0.75) / 0.25; // 0 to 1
               updateIntroTextPosition(stage3Progress);
             }
             
             // Update mixer
             mixer.update(0); // No delta time since we're setting time manually
             
-            console.debug(`🎬 Scroll: ${(scrollPercent * 100).toFixed(1)}% | Stage: ${scrollPercent <= 0.33 ? '1' : scrollPercent <= 0.66 ? '2' : '3'}`);
+            console.debug(`🎬 Scroll: ${(scrollPercent * 100).toFixed(1)}% | Stage: ${scrollPercent <= 0.25 ? '1' : scrollPercent <= 0.75 ? '2' : '3'}`);
           }
         },
         onToggle: (self) => {
@@ -603,6 +629,12 @@ function initScrollAnimation() {
     const maxScroll = document.body.scrollHeight - window.innerHeight;
     scrollPercent = Math.min(scrollY / maxScroll, 1);
     
+    // Handle new scroll behavior: prevent page scroll during model animation
+    if (!modelScrollCompleted) {
+      handleModelScrollBehavior(scrollY);
+      return; // Exit early - don't process other scroll logic during model animation
+    }
+    
     // Stop auto-rotation when scroll animation is active (fallback)
     if (scrollPercent > 0) {
       isRotating = false;
@@ -611,16 +643,12 @@ function initScrollAnimation() {
       if (rotationToggle) rotationToggle.checked = false;
     }
     
-                // Start model-scroll on first scroll (fallback, only once)
-            if (scrollPercent > 0 && !autoScrollStarted && !modelScrollCompleted) {
-              startAutoScroll();
-            }
-    
-    // Stage 1: Auto animation (0-33% scroll) - fallback
-    if (scrollPercent <= 0.33) {
-      // Model animation completes at 100% when page scroll reaches 33%
-      // This means animation is 3x more sensitive to scroll input
-      const animationProgress = Math.min(scrollPercent / 0.33, 1); // 0 to 1
+    // Stage 1: Auto animation (0-25% scroll) - fallback
+    // Only update model if animation is not completed
+    if (scrollPercent <= 0.25 && !modelScrollCompleted) {
+      // Model animation completes at 100% when page scroll reaches 25%
+      // This means animation is 4x more sensitive to scroll input
+      const animationProgress = Math.min(scrollPercent / 0.25, 1); // 0 to 1
       
       if (animations.length > 0) {
         const animationTime = animationProgress * animations[0].duration;
@@ -659,33 +687,32 @@ function initScrollAnimation() {
       }
     }
     
-    // Stage 2: Image animation (33-66% scroll) - fallback
-    if (scrollPercent >= 0.33 && !imageScrollStarted) {
+    // Stage 2: Image animation (25-75% scroll) - fallback
+    if (scrollPercent >= 0.25 && !imageScrollStarted) {
       imageScrollStarted = true;
       console.log('🖼️ Starting scroll-controlled image animation (fallback)');
     }
     
-    if (imageScrollStarted && imageOverlay && scrollPercent >= 0.33) {
-      // Calculate image progress from 33% to 66% scroll range
-      const stage2Progress = (scrollPercent - 0.33) / 0.33; // 0 to 1
+    if (imageScrollStarted && imageOverlay && scrollPercent >= 0.25) {
+      // Calculate image progress from 25% to 75% scroll range (50% total range)
+      const stage2Progress = (scrollPercent - 0.25) / 0.50; // 0 to 1
       updateImageOverlayPosition(stage2Progress);
     }
     
-    // Stage 3: Text animation (66-100% scroll) - fallback
-    if (scrollPercent >= 0.66 && !introTextActive) {
+    // Stage 3: Text animation (75-100% scroll) - fallback
+    if (scrollPercent >= 0.75 && !introTextActive) {
       introTextActive = true;
-      createIntroTextSection();
       console.log('📝 Starting introduction text section (fallback)');
     }
     
-    if (introTextActive && introTextSection && scrollPercent >= 0.66) {
-      // Calculate text scroll progress from 66% to 100% scroll range
-      const stage3Progress = (scrollPercent - 0.66) / 0.34; // 0 to 1
+    if (introTextActive && introTextSection && scrollPercent >= 0.75) {
+      // Calculate text scroll progress from 75% to 100% scroll range (25% total range)
+      const stage3Progress = (scrollPercent - 0.75) / 0.25; // 0 to 1
       updateIntroTextPosition(stage3Progress);
 
     }
     
-    console.debug(`🎬 Scroll Fallback: ${(scrollPercent * 100).toFixed(1)}% | Stage: ${scrollPercent <= 0.33 ? '1' : scrollPercent <= 0.66 ? '2' : '3'}`);
+    console.debug(`🎬 Scroll Fallback: ${(scrollPercent * 100).toFixed(1)}% | Stage: ${scrollPercent <= 0.25 ? '1' : scrollPercent <= 0.75 ? '2' : '3'}`);
   });
 }
 
@@ -1211,6 +1238,13 @@ function resetScrollAnimationState() {
   scrollDisabled = false;
   modelScrollCompleted = false;
   
+  // Reset new scroll behavior state
+  isModelAnimationPlaying = false;
+  modelAnimationProgress = 0;
+  userScrollTriggered = false;
+  animationDirection = 1;
+  lastScrollY = 0;
+  
   // Reset image overlay state
   imageOverlayTargetReached = false;
   imageOverlayBottomUp = false;
@@ -1248,17 +1282,48 @@ function resetScrollAnimationState() {
 }
 
 /**
- * Create and setup image overlay
+ * Create main document structure with proper sections
  */
-function createImageOverlay() {
-  if (imageOverlay) return; // Already exists
+function createDocumentStructure() {
+  // Create main container
+  const mainContainer = document.createElement('div');
+  mainContainer.id = 'main-container';
+  mainContainer.style.cssText = `
+    position: relative;
+    width: 100%;
+    height: 400vh;
+    margin: 0;
+    padding: 0;
+  `;
   
+  // Create 3D model section (first 100vh)
+  const modelSection = document.createElement('div');
+  modelSection.id = 'model-section';
+  modelSection.style.cssText = `
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+  `;
+  
+  // Move the existing canvas into the model section
+  const existingCanvas = document.getElementById('threejs-canvas');
+  if (existingCanvas) {
+    existingCanvas.style.position = 'absolute';
+    existingCanvas.style.top = '0';
+    existingCanvas.style.left = '0';
+    existingCanvas.style.width = '100%';
+    existingCanvas.style.height = '100%';
+    modelSection.appendChild(existingCanvas);
+  }
+  
+  // Create image section (200vh)
   imageOverlay = document.createElement('div');
   imageOverlay.id = 'image-overlay';
   imageOverlay.style.cssText = `
-    position: fixed;
-    top: 100vh;
-    left: 0;
+    position: relative;
     width: 100vw;
     height: 200vh;
     background-image: url('assets/IMG5.jpeg');
@@ -1266,11 +1331,74 @@ function createImageOverlay() {
     background-position: center top;
     background-repeat: no-repeat;
     z-index: 9998;
-    pointer-events: none;
+    margin: 0;
+    padding: 0;
   `;
   
-  document.body.appendChild(imageOverlay);
-  console.log('🖼️ Image overlay created (scroll-controlled)');
+  // Create text section (dynamic height based on content)
+  introTextSection = document.createElement('div');
+  introTextSection.id = 'intro-text-section';
+  introTextSection.style.cssText = `
+    position: relative;
+    width: 100vw;
+    min-height: 100vh;
+    background: #ffffff;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-family: 'Object Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.8;
+    color: #2c3e50;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    margin: 0;
+    padding: 100px 0;
+  `;
+  
+  // Hide scrollbar
+  introTextSection.style.setProperty('scrollbar-width', 'none');
+  introTextSection.style.setProperty('-webkit-scrollbar', 'display: none');
+  
+  const textContent = `
+    <div style="width: 1027px; box-sizing: border-box; text-align: left;">
+      <div style="color: #000; font-size: 40px; font-style: normal; font-weight: 400; line-height: 61px;">
+        <p style="margin-bottom: 61px;">
+          Kao Furniture Studio operates within Georgia's rich tradition of woodworking and furniture making, which has deep historical roots in the region. Traditional Georgian woodworking has been characterized by geometric, astral, zoomorphic, and figurative patterns showing connections with folk beliefs, with craftsmen creating everything from furniture to religious artifacts.
+        </p>
+        
+        <p style="margin-bottom: 61px;">
+          The studio emerges from a context where traveling masters from Rach'a, whose hands had made the balconies of the houses in Tbilisi and eastern Georgia, especially stood out among the wood craftsmen, and where wood carving was also widely used as in decorating home furniture and other household objects. This includes traditional items like armchairs, sak'artskhuli (a special chair for the head of the family in Svaneti and Rach'a), settees, chests, cradles.
+        </p>
+        
+        <p style="margin-bottom: 61px;">
+          Contemporary Georgian woodworking has evolved to blend traditional techniques with modern design approaches. As evidenced by other Georgian studios, there's a growing movement of artisans and designers collaborating to create products that appeal to a global audience. These contemporary crafts, while rooted in traditional techniques, are adapted to suit modern tastes and uses.
+        </p>
+      </div>
+    </div>
+  `;
+  
+  introTextSection.innerHTML = textContent;
+  
+  // Assemble the document structure
+  mainContainer.appendChild(modelSection);
+  mainContainer.appendChild(imageOverlay);
+  mainContainer.appendChild(introTextSection);
+  document.body.appendChild(mainContainer);
+  
+  // Calculate dynamic height based on actual content
+  const modelSectionHeight = 100; // 100vh
+  const imageSectionHeight = 200; // 200vh
+  const textSectionHeight = Math.ceil(introTextSection.scrollHeight / window.innerHeight); // Dynamic height in vh
+  
+  const totalHeight = modelSectionHeight + imageSectionHeight + textSectionHeight;
+  
+  // Set body height to accommodate all sections
+  document.body.style.height = `${totalHeight}vh`;
+  
+  console.log(`📄 Document structure created: ${modelSectionHeight}vh (model) + ${imageSectionHeight}vh (image) + ${textSectionHeight}vh (text) = ${totalHeight}vh total`);
 }
 
 /**
@@ -1326,7 +1454,8 @@ function animateImageOverlayBottomUp() {
 }
 
 /**
- * Update image overlay position based on scroll progress
+ * Update image section visibility based on scroll progress
+ * Since image is now part of scrollable content, we just track progress
  */
 function updateImageOverlayPosition(scrollProgress) {
   if (!imageOverlay) return;
@@ -1336,81 +1465,24 @@ function updateImageOverlayPosition(scrollProgress) {
     ? 4 * scrollProgress * scrollProgress * scrollProgress 
     : 1 - Math.pow(-2 * scrollProgress + 2, 3) / 2;
   
-  // Calculate position: from 100vh (bottom) to -100vh (top)
-  // This reveals the full image from bottom to top
-  const imageTop = 100 - (easedProgress * 200); // 100vh to -100vh
+  // Clamp progress to 1.0 to prevent going beyond full reveal
+  const clampedProgress = Math.min(easedProgress, 1.0);
   
-  imageOverlay.style.top = `${imageTop}vh`;
+  // Since image is now part of scrollable content, we don't need to position it
+  // The scroll naturally reveals the image as user scrolls through it
+  // We just track the progress for debugging and other systems
   
   // Update progress tracking
-  imageScrollProgress = easedProgress;
+  imageScrollProgress = clampedProgress;
   
-  console.debug(`🖼️ Image position: ${imageTop.toFixed(1)}vh (${(easedProgress * 100).toFixed(1)}%)`);
+  console.debug(`🖼️ Image scroll progress: ${(clampedProgress * 100).toFixed(1)}% (natural scroll reveal)`);
 }
 
-/**
- * Create introduction text section
- */
-function createIntroTextSection() {
-  if (introTextSection) {
-    console.log('📝 Intro text section already exists');
-    return; // Already exists
-  }
-  
-  console.log('📝 Creating intro text section...');
-  introTextSection = document.createElement('div');
-  introTextSection.id = 'intro-text-section';
-  introTextSection.style.cssText = `
-    position: fixed;
-    top: 100vh;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-    font-family: 'Object Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    line-height: 1.8;
-    color: #2c3e50;
-    overflow-y: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-
-  `;
-  
-  // Hide scrollbar
-  introTextSection.style.setProperty('scrollbar-width', 'none');
-  introTextSection.style.setProperty('-webkit-scrollbar', 'display: none');
-  
-  const textContent = `
-    <div style="width: 1027px; height: 1600px; box-sizing: border-box; text-align: left;">
-      <div style="color: #000; font-size: 40px; font-style: normal; font-weight: 400; line-height: 61px;">
-        <p style="margin-bottom: 61px;">
-          Kao Furniture Studio operates within Georgia's rich tradition of woodworking and furniture making, which has deep historical roots in the region. Traditional Georgian woodworking has been characterized by geometric, astral, zoomorphic, and figurative patterns showing connections with folk beliefs, with craftsmen creating everything from furniture to religious artifacts.
-        </p>
-        
-        <p style="margin-bottom: 61px;">
-          The studio emerges from a context where traveling masters from Rach'a, whose hands had made the balconies of the houses in Tbilisi and eastern Georgia, especially stood out among the wood craftsmen, and where wood carving was also widely used as in decorating home furniture and other household objects. This includes traditional items like armchairs, sak'artskhuli (a special chair for the head of the family in Svaneti and Rach'a), settees, chests, cradles.
-        </p>
-        
-        <p style="margin-bottom: 61px;">
-          Contemporary Georgian woodworking has evolved to blend traditional techniques with modern design approaches. As evidenced by other Georgian studios, there's a growing movement of artisans and designers collaborating to create products that appeal to a global audience. These contemporary crafts, while rooted in traditional techniques, are adapted to suit modern tastes and uses.
-        </p>
-      </div>
-    </div>
-  `;
-  
-  introTextSection.innerHTML = textContent;
-  document.body.appendChild(introTextSection);
-  console.log('📝 Introduction text section created and added to DOM');
-  console.log('📝 Element:', introTextSection);
-}
+// Function removed - now handled in createDocumentStructure()
 
 /**
- * Update introduction text position based on scroll progress
+ * Update introduction text visibility based on scroll progress
+ * Since text is now part of scrollable content, we just track progress
  */
 function updateIntroTextPosition(scrollProgress) {
   if (!introTextSection) {
@@ -1423,16 +1495,17 @@ function updateIntroTextPosition(scrollProgress) {
     ? 4 * scrollProgress * scrollProgress * scrollProgress 
     : 1 - Math.pow(-2 * scrollProgress + 2, 3) / 2;
   
-  // Calculate position: from 100vh (below viewport) to 0vh (full viewport)
-  // Add 200px offset to create proper spacing from image
-  const textTop = 100 - (easedProgress * 100); // 100vh to 0vh
+  // Clamp progress to 1.0 to prevent going beyond full reveal
+  const clampedProgress = Math.min(easedProgress, 1.0);
   
-  introTextSection.style.top = `${textTop}vh`;
+  // Since text is now part of scrollable content, we don't need to position it
+  // The scroll naturally reveals the text as user scrolls through it
+  // We just track the progress for debugging and other systems
   
   // Update progress tracking
-  introTextScrollProgress = easedProgress;
+  introTextScrollProgress = clampedProgress;
   
-  console.debug(`📝 Text position: ${textTop.toFixed(1)}vh (${(easedProgress * 100).toFixed(1)}%)`);
+  console.debug(`📝 Text scroll progress: ${(clampedProgress * 100).toFixed(1)}% (natural scroll reveal)`);
 }
 
 /**
@@ -1555,15 +1628,15 @@ function updateOverlayPanel() {
   let currentStage = 1;
   let stageProgress = 0;
   
-  if (pageScrollProgress <= 0.33) {
+  if (pageScrollProgress <= 0.25) {
     currentStage = 1;
-    stageProgress = pageScrollProgress / 0.33;
-  } else if (pageScrollProgress <= 0.66) {
+    stageProgress = pageScrollProgress / 0.25;
+  } else if (pageScrollProgress <= 0.75) {
     currentStage = 2;
-    stageProgress = (pageScrollProgress - 0.33) / 0.33;
+    stageProgress = (pageScrollProgress - 0.25) / 0.50;
   } else {
     currentStage = 3;
-    stageProgress = (pageScrollProgress - 0.66) / 0.34;
+    stageProgress = (pageScrollProgress - 0.75) / 0.25;
   }
   
   // Update page scroll
@@ -1575,9 +1648,9 @@ function updateOverlayPanel() {
   // Update model scroll status
   const autoScrollElement = document.getElementById('auto-scroll');
   if (autoScrollElement) {
-    if (pageScrollProgress <= 0.33) {
+    if (pageScrollProgress <= 0.25) {
       // Show animation progress (0-100%) during Stage 1
-      const animationProgress = (pageScrollProgress / 0.33) * 100;
+      const animationProgress = (pageScrollProgress / 0.25) * 100;
       autoScrollElement.textContent = `${animationProgress.toFixed(1)}%`;
       autoScrollElement.style.color = '#4ade80';
     } else {
@@ -1618,6 +1691,288 @@ function updateOverlayPanel() {
 
 
 /**
+ * Handle scroll behavior during model animation phase
+ * Detects first scroll and plays animation to 100% at same position
+ */
+function handleModelScrollBehavior(scrollY) {
+  // Detect first scroll event
+  if (!userScrollTriggered && scrollY > 0) {
+    userScrollTriggered = true;
+    console.log('⬇️ First scroll detected - starting model animation to 100%');
+    
+    // Prevent page from scrolling further
+    document.body.style.overflow = 'hidden';
+    
+    // Start the animation that plays to 100%
+    startModelAnimationTo100();
+  }
+  
+  // Keep page at initial position during animation
+  if (userScrollTriggered && !modelScrollCompleted && window.scrollY > 0) {
+    window.scrollTo({
+      top: 0,
+      behavior: 'auto'
+    });
+  }
+}
+
+/**
+ * Start model animation that plays to 100% completion
+ */
+function startModelAnimationTo100() {
+  if (isModelAnimationPlaying || !model || !scrollAnimation) return;
+  
+  isModelAnimationPlaying = true;
+  console.log('🎬 Starting model animation to 100% completion');
+  
+  // Capture current state if not already captured
+  if (!scrollAnimationStarted) {
+    captureScrollStartState();
+  }
+  
+  // Get start and target states
+  const startPos = scrollStartPosition;
+  const targetPos = scrollTargetConfig.model.position;
+  const startRot = scrollStartRotation;
+  const targetRot = scrollTargetConfig.model.rotation;
+  const startScale = scrollStartScale;
+  const targetScale = scrollTargetConfig.model.scale;
+  
+  const startCam = defaultConfig.camera;
+  const targetCam = scrollTargetConfig.camera;
+  
+  // Start time for animation
+  const startTime = Date.now();
+  
+  // Model animation loop
+  function animateModel() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / autoScrollDuration, 1);
+    
+    // Apply easing (easeInOutCubic)
+    const easedProgress = progress < 0.5 
+      ? 4 * progress * progress * progress 
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+    
+    modelAnimationProgress = easedProgress;
+    
+    // Update model position with easing
+    model.position.x = startPos.x + (targetPos.x - startPos.x) * easedProgress;
+    model.position.y = startPos.y + (targetPos.y - startPos.y) * easedProgress;
+    model.position.z = startPos.z + (targetPos.z - startPos.z) * easedProgress;
+    
+    // Update model rotation with easing
+    model.rotation.x = startRot.x + (targetRot.x - startRot.x) * easedProgress;
+    model.rotation.y = startRot.y + (targetRot.y - startRot.y) * easedProgress;
+    model.rotation.z = startRot.z + (targetRot.z - startRot.z) * easedProgress;
+    
+    // Update model scale with easing
+    model.scale.setScalar(startScale + (targetScale - startScale) * easedProgress);
+    
+    // Update camera position with easing
+    if (camera) {
+      camera.position.x = startCam.x + (targetCam.x - startCam.x) * easedProgress;
+      camera.position.y = startCam.y + (targetCam.y - startCam.y) * easedProgress;
+      camera.position.z = startCam.z + (targetCam.z - startCam.z) * easedProgress;
+    }
+    
+    // Update model animations if available
+    if (scrollAnimation && animations.length > 0) {
+      const animationTime = easedProgress * animations[0].duration;
+      scrollAnimation.time = animationTime;
+      if (mixer) mixer.update(0);
+    }
+    
+    // Update control panel sliders
+    updateControlSliders();
+    
+    // Continue animation if not complete
+    if (progress < 1) {
+      requestAnimationFrame(animateModel);
+    } else {
+      // Animation complete
+      console.log('✅ Model animation completed to 100%');
+      
+      // Mark model scroll as completed
+      modelScrollCompleted = true;
+      
+      // Re-enable page scrolling
+      document.body.style.overflow = 'auto';
+      console.log('🔓 Page scrolling enabled - user can now scroll the page');
+      
+      // Reset animation state
+      isModelAnimationPlaying = false;
+    }
+  }
+  
+  // Start the animation
+  requestAnimationFrame(animateModel);
+}
+
+/**
+ * Update model animation based on scroll progress
+ */
+function updateModelAnimationFromScroll(scrollProgress) {
+  if (!model || !scrollAnimation) return;
+  
+  // Capture current state if not already captured
+  if (!scrollAnimationStarted) {
+    captureScrollStartState();
+  }
+  
+  // Get start and target states
+  const startPos = scrollStartPosition;
+  const targetPos = scrollTargetConfig.model.position;
+  const startRot = scrollStartRotation;
+  const targetRot = scrollTargetConfig.model.rotation;
+  const startScale = scrollStartScale;
+  const targetScale = scrollTargetConfig.model.scale;
+  
+  const startCam = defaultConfig.camera;
+  const targetCam = scrollTargetConfig.camera;
+  
+  // Apply easing to scroll progress
+  const easedProgress = scrollProgress < 0.5 
+    ? 4 * scrollProgress * scrollProgress * scrollProgress 
+    : 1 - Math.pow(-2 * scrollProgress + 2, 3) / 2;
+  
+  // Update model position with easing
+  model.position.x = startPos.x + (targetPos.x - startPos.x) * easedProgress;
+  model.position.y = startPos.y + (targetPos.y - startPos.y) * easedProgress;
+  model.position.z = startPos.z + (targetPos.z - startPos.z) * easedProgress;
+  
+  // Update model rotation with easing
+  model.rotation.x = startRot.x + (targetRot.x - startRot.x) * easedProgress;
+  model.rotation.y = startRot.y + (targetRot.y - startRot.y) * easedProgress;
+  model.rotation.z = startRot.z + (targetRot.z - startRot.z) * easedProgress;
+  
+  // Update model scale with easing
+  model.scale.setScalar(startScale + (targetScale - startScale) * easedProgress);
+  
+  // Update camera position with easing
+  if (camera) {
+    camera.position.x = startCam.x + (targetCam.x - startCam.x) * easedProgress;
+    camera.position.y = startCam.y + (targetCam.y - startCam.y) * easedProgress;
+    camera.position.z = startCam.z + (targetCam.z - startCam.z) * easedProgress;
+  }
+  
+  // Update model animations if available
+  if (scrollAnimation && animations.length > 0) {
+    const animationTime = easedProgress * animations[0].duration;
+    scrollAnimation.time = animationTime;
+    if (mixer) mixer.update(0);
+  }
+  
+  // Update control panel sliders
+  updateControlSliders();
+  
+  // Check if animation is complete (scroll reached 100% of stage 1)
+  if (scrollProgress >= 1) {
+    modelScrollCompleted = true;
+    console.log('✅ Model animation completed - user can now continue scrolling');
+  }
+}
+
+/**
+ * Start model animation based on user scroll direction
+ */
+function startModelAnimation() {
+  if (isModelAnimationPlaying || !model || !scrollAnimation) return;
+  
+  isModelAnimationPlaying = true;
+  console.log(`🎬 Starting model animation (direction: ${animationDirection > 0 ? 'forward' : 'reverse'})`);
+  
+  // Disable user scrolling during animation
+  document.body.style.overflow = 'hidden';
+  
+  // Capture current state if not already captured
+  if (!scrollAnimationStarted) {
+    captureScrollStartState();
+  }
+  
+  // Get start and target states
+  const startPos = scrollStartPosition;
+  const targetPos = scrollTargetConfig.model.position;
+  const startRot = scrollStartRotation;
+  const targetRot = scrollTargetConfig.model.rotation;
+  const startScale = scrollStartScale;
+  const targetScale = scrollTargetConfig.model.scale;
+  
+  const startCam = defaultConfig.camera;
+  const targetCam = scrollTargetConfig.camera;
+  
+  // Start time for animation
+  const startTime = Date.now();
+  
+  // Model animation loop
+  function animateModel() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / autoScrollDuration, 1);
+    
+    // Apply easing (easeInOutCubic)
+    const easedProgress = progress < 0.5 
+      ? 4 * progress * progress * progress 
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+    
+    // Apply direction
+    const finalProgress = animationDirection > 0 ? easedProgress : (1 - easedProgress);
+    modelAnimationProgress = finalProgress;
+    
+    // Update model position with easing
+    model.position.x = startPos.x + (targetPos.x - startPos.x) * finalProgress;
+    model.position.y = startPos.y + (targetPos.y - startPos.y) * finalProgress;
+    model.position.z = startPos.z + (targetPos.z - startPos.z) * finalProgress;
+    
+    // Update model rotation with easing
+    model.rotation.x = startRot.x + (targetRot.x - startRot.x) * finalProgress;
+    model.rotation.y = startRot.y + (targetRot.y - startRot.y) * finalProgress;
+    model.rotation.z = startRot.z + (targetRot.z - startRot.z) * finalProgress;
+    
+    // Update model scale with easing
+    model.scale.setScalar(startScale + (targetScale - startScale) * finalProgress);
+    
+    // Update camera position with easing
+    if (camera) {
+      camera.position.x = startCam.x + (targetCam.x - startCam.x) * finalProgress;
+      camera.position.y = startCam.y + (targetCam.y - startCam.y) * finalProgress;
+      camera.position.z = startCam.z + (targetCam.z - startCam.z) * finalProgress;
+    }
+    
+    // Update model animations if available
+    if (scrollAnimation && animations.length > 0) {
+      const animationTime = finalProgress * animations[0].duration;
+      scrollAnimation.time = animationTime;
+      if (mixer) mixer.update(0);
+    }
+    
+    // Update control panel sliders
+    updateControlSliders();
+    
+    // Continue animation if not complete
+    if (progress < 1) {
+      requestAnimationFrame(animateModel);
+    } else {
+      // Animation complete
+      console.log(`✅ Model animation completed (${animationDirection > 0 ? 'forward' : 'reverse'})`);
+      
+      // If animation completed forward (100%), allow continued scrolling
+      if (animationDirection > 0 && finalProgress >= 1) {
+        modelScrollCompleted = true;
+        document.body.style.overflow = 'auto';
+        console.log('🔓 Model animation completed - user can now scroll the page');
+      }
+      
+      // Reset animation state
+      isModelAnimationPlaying = false;
+      userScrollTriggered = false;
+    }
+  }
+  
+  // Start the animation
+  requestAnimationFrame(animateModel);
+}
+
+/**
  * Start model-scroll to target position with easing
  */
 function startAutoScroll() {
@@ -1625,6 +1980,10 @@ function startAutoScroll() {
   
   autoScrollStarted = true;
   console.log('🎬 Starting model-scroll to target position');
+  
+  // Disable user scrolling during auto-animation
+  document.body.style.overflow = 'hidden';
+  console.log('🔒 User scrolling disabled during auto-animation');
   
   // Capture current state if not already captured
   if (!scrollAnimationStarted) {
@@ -1655,8 +2014,8 @@ function startAutoScroll() {
       ? 4 * progress * progress * progress 
       : 1 - Math.pow(-2 * progress + 2, 3) / 2;
     
-    // Calculate scroll position (scroll to 33% of page height for Stage 1 completion)
-    const targetScrollY = (document.body.scrollHeight - window.innerHeight) * 0.33;
+    // Calculate scroll position (scroll to 25% of page height for Stage 1 completion)
+    const targetScrollY = (document.body.scrollHeight - window.innerHeight) * 0.25;
     const currentScrollY = easedProgress * targetScrollY;
     
     // Perform smooth scroll
@@ -1701,11 +2060,15 @@ function startAutoScroll() {
     } else {
       // Model-scroll complete
       console.log('✅ Model-scroll completed to 100%');
-      // Create image overlay for scroll-controlled animation
+      
+      // Re-enable user scrolling after auto-animation completes
+      document.body.style.overflow = 'auto';
+      console.log('🔓 User scrolling re-enabled - ready for manual scroll');
+      
+      // Image and text sections are already created as part of document structure
       if (!imageOverlayTargetReached) {
         imageOverlayTargetReached = true;
-        createImageOverlay();
-        console.log('🖼️ Image overlay ready for scroll-controlled animation');
+        console.log('🖼️ Image section ready for scroll-controlled animation');
       }
       
       // Reset flag after a short delay to ensure smooth transition
@@ -1824,6 +2187,9 @@ function initWordAnimation() {
 function initApp() {
   console.log('🚀 Initializing 3D Viewer Application...');
   
+  // Create main document structure
+  createDocumentStructure();
+  
   // Initialize loading animation
   startLoadingAnimation();
   
@@ -1849,6 +2215,9 @@ function initApp() {
   // Create overlay panel
   createOverlayPanel();
   
+  // Hide UI elements initially
+  hideUIElements();
+  
   console.log('✅ 3D Viewer Application initialized successfully');
 }
 
@@ -1857,10 +2226,76 @@ document.addEventListener('DOMContentLoaded', initApp);
 
 
 
+/**
+ * Hide UI elements (scroll indicator, mouse info, overlay panel, gear icon)
+ */
+function hideUIElements() {
+  // Hide scroll indicator
+  if (scrollIndicator) {
+    scrollIndicator.style.display = 'none';
+    scrollIndicatorActive = false;
+  }
+  
+  // Hide mouse info and prevent it from showing on pointer events
+  if (mouseInfo) {
+    mouseInfo.style.display = 'none';
+    // Add a flag to prevent showing on pointer events
+    mouseInfo.dataset.hidden = 'true';
+  }
+  
+  // Hide overlay panel
+  if (overlayPanel) {
+    overlayPanel.style.display = 'none';
+    overlayPanelActive = false;
+  }
+  
+  // Hide gear icon (control toggle)
+  const controlToggle = document.getElementById('controlToggle');
+  if (controlToggle) {
+    controlToggle.style.display = 'none';
+  }
+  
+  console.log('👁️ UI elements hidden');
+}
+
+/**
+ * Show UI elements (scroll indicator, mouse info, overlay panel, gear icon)
+ */
+function showUIElements() {
+  // Show scroll indicator
+  if (scrollIndicator) {
+    scrollIndicator.style.display = 'block';
+    scrollIndicatorActive = true;
+  }
+  
+  // Show mouse info and enable pointer events
+  if (mouseInfo) {
+    mouseInfo.style.display = 'block';
+    // Remove the hidden flag to allow showing on pointer events
+    delete mouseInfo.dataset.hidden;
+  }
+  
+  // Show overlay panel
+  if (overlayPanel) {
+    overlayPanel.style.display = 'block';
+    overlayPanelActive = true;
+  }
+  
+  // Show gear icon (control toggle)
+  const controlToggle = document.getElementById('controlToggle');
+  if (controlToggle) {
+    controlToggle.style.display = 'block';
+  }
+  
+  console.log('👁️ UI elements shown');
+}
+
 // Export functions for potential external use
 export {
   initApp,
   getCurrentState,
   applyState,
-  soundManager
+  soundManager,
+  hideUIElements,
+  showUIElements
 };

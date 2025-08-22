@@ -1,182 +1,290 @@
-# KAO Furniture - Interactive 3D Viewer with Scroll Animation
+# KAO Furniture - Interactive 3D Web Experience
 
-A sophisticated 3D furniture viewer with scroll-triggered animations, image reveals, and introduction text. Built with Three.js, GSAP ScrollTrigger, and modern web technologies. Perfect for furniture studios showcasing their work with an engaging, interactive experience.
+A sophisticated multi-page web application showcasing KAO Furniture Studio's work through interactive 3D models, scroll-triggered animations, and modern web technologies. Built with Three.js, GSAP ScrollTrigger, and modular JavaScript architecture.
 
-## Project Structure
+## 🏗️ Project Structure
 
 ```
-kao_web/
-├── assets/
-│   ├── kaoblack.png
-│   └── outline.svg
-├── models/
-│   └── form.glb          # 3D furniture model (39MB)
-├── index.html            # Main page with loader
-├── style.css             # Clean styling
-├── script.js             # Animation & 3D logic
-└── README.md             # This file
+kao web/
+├── 📄 HTML Pages
+│   ├── index.html              # Main 3D viewer with scroll animations
+│   ├── about.html              # Product showcase with split layout
+│   ├── projects.html           # Portfolio grid with sidebar
+│   └── kao-loading-minimal.html # Minimal loading page
+│
+├── 🎨 Styling & Assets
+│   ├── style.css               # Comprehensive CSS for all pages
+│   ├── assets/
+│   │   └── IMG5.jpeg           # Dining room image (6MB)
+│   └── sprite/
+│       ├── audiomass-output 1.wav  # Click sound 1 (14KB)
+│       └── audiomass-output 2.wav  # Click sound 2 (29KB)
+│
+├── 🎮 JavaScript Modules
+│   ├── js/
+│   │   ├── script.js           # Main 3D viewer logic (1866 lines)
+│   │   ├── about.js            # About page interactions (114 lines)
+│   │   ├── projects.js         # Projects page functionality (98 lines)
+│   │   ├── sound.js            # Universal sound manager (168 lines)
+│   │   └── overlay-menu.js     # Navigation menu system (90 lines)
+│   └── script-old.js           # Legacy 3D viewer (852 lines)
+│
+├── 🎯 3D Models
+│   ├── models/
+│   │   ├── form.glb            # Main furniture model (8.5MB)
+│   │   └── form2.glb           # Alternative model (23MB)
+│   └── untitled.glb            # Additional model file
+│
+└── 📚 Documentation
+    ├── README.md               # This comprehensive guide
+    ├── ANIMATION_SYSTEM.md     # Scroll animation documentation
+    └── SOUND_SYSTEM.md         # Audio system documentation
 ```
 
-## Website Structure & User Experience
+## 🌟 Key Features
 
-### 1. Initial Load & 3D Model Display
-- **Loading Animation**: ".KAO FURNITURE" text animates with staggered timing
-- **3D Model**: `form.glb` furniture model loads and displays with auto-rotation
-- **Subtitle**: "Furniture Studio Woodworking School Tbilisi, Georgia." remains visible
-- **Clean Interface**: Minimal design with professional aesthetics
+### **Interactive 3D Viewer (index.html)**
+- **Three.js Integration**: Full 3D model rendering with WebGL
+- **Scroll-Triggered Animations**: GSAP ScrollTrigger for smooth model transitions
+- **Real-time Controls**: Camera, position, rotation, and scale adjustments
+- **State Management**: Save/load 3D configurations as JSON
+- **Auto-Rotation**: Smooth model rotation with manual override
+- **Mouse Interaction**: Drag controls and raycasting for model interaction
+- **Loading Animation**: Staggered text animation with Anime.js
 
-### 2. Scroll-Triggered Auto Animation
-- **Scroll Detection**: Any scroll movement triggers automatic animation
-- **Auto-Play**: 3-second smooth animation to target configuration with easing
-- **Scroll Disabled**: User cannot scroll during auto animation
-- **Target Configuration**: Model animates to predefined position, rotation, and scale
-- **Easing**: EaseInOutCubic for natural, professional motion
-- **Stage 1**: 0-33% of total scroll height (auto animation)
-- **Animation Sensitivity**: Model animation completes at 100% when page scroll reaches 33%
+### **Product Showcase (about.html)**
+- **Split Layout**: Image gallery with product information
+- **Responsive Design**: Adapts to mobile and tablet screens
+- **Interactive Elements**: Hover effects and click sounds
+- **Social Integration**: Links to designer and studio social media
+- **Product Details**: Tea tray collaboration information
 
-### 3. Image5 Reveal (Scroll-Controlled)
-- **Manual Control**: After auto animation, user controls image reveal with scroll
-- **Image5**: Dining room image (`assets/IMG5.jpeg`) reveals from bottom to top
-- **Full Reveal**: Image height 200vh, reveals complete dining room scene
-- **Smooth Easing**: EaseInOutCubic easing applied to scroll input
-- **Real-time**: Immediate response to scroll changes
-- **Stage 2**: 33-66% of total scroll height (image reveal)
+### **Portfolio Grid (projects.html)**
+- **Sticky Sidebar**: Navigation with project list
+- **CSS Grid Layout**: Responsive image grid system
+- **Interactive Grid**: Hover effects and click feedback
+- **Project Listings**: Studio names and descriptions
+- **Mobile Optimized**: Collapsible layout for smaller screens
 
-### 4. Introduction Text Section
-- **Seamless Transition**: Text appears as user scrolls past image5
-- **Layout**: Fixed positioning with 200px padding from image
-- **Content**: Kao Furniture Studio introduction with Georgian woodworking history
-- **Typography**: Professional layout with Object Sans font
-- **Dimensions**: Text container width: 1027px, height: 1127px
-- **Typography**: 40px font size, 61px line height, 400 font weight
-- **Clean Layout**: Text-only content without title or navigation buttons
-- **Stage 3**: 66-100% of total scroll height (text reveal)
+### **Universal Systems**
+- **Sound Manager**: Random click sounds with multiple variations
+- **Overlay Menu**: Full-screen navigation with animations
+- **Responsive Design**: Mobile-first approach across all pages
+- **Performance Optimized**: Efficient loading and rendering
 
-### Interactive 3D Controls
-- **Real-time Manipulation**: Adjust camera and model properties instantly
-- **Camera Position**: X, Y, Z sliders for camera positioning
-- **Model Position**: X, Y, Z sliders for model positioning  
-- **Model Rotation**: X, Y, Z rotation controls (0 to 2π radians)
-- **Model Scale**: Uniform scaling from 0.1x to 5x size
-- **Reset Function**: Restore all original values with one click
+## 🎬 Animation System
 
-### State Management
-- **📋 Copy State**: Captures current 3D configuration as JSON
-- **📥 Paste State**: Restores configuration from JSON
-- **Shareable Configs**: Copy and share specific viewing angles
-- **JSON Format**: Clean, readable state format with metadata
-- **Visual Feedback**: Success/error indicators for operations
-- **Version Control**: States include timestamp and version info
+### **Scroll-Triggered 3D Animation**
+- **GSAP Integration**: Smooth scroll-to-animation synchronization
+- **GLTF Animation Support**: Extracts and controls model animations
+- **Fallback System**: Works without GSAP using native scroll events
+- **Real-time Control**: Manual animation scrubbing via control panel
 
-### Complete User Journey
-1. **Page Load**: Loading animation with ".KAO FURNITURE" text and 3D model
-2. **Initial State**: 3D model rotates automatically in center viewport
-3. **Stage 1 (0-33%)**: User scrolls → Auto animation starts (3 seconds to target)
-4. **Stage 2 (33-66%)**: User continues scrolling → Image5 reveals from bottom to top
-5. **Stage 3 (66-100%)**: User scrolls past image → Introduction text appears with 200px padding
-6. **Reading Experience**: User reads text in 1027px × 1127px container with 40px font size
+### **Loading Animations**
+- **Text Staggering**: Word-by-word animation using Anime.js
+- **Smooth Transitions**: Fade effects between loading and content
+- **Performance Optimized**: Hardware-accelerated animations
 
-### 3D Model Display
-- **Three.js Integration**: Uses Three.js r152 with GLTFLoader
-- **DRACO Compression**: Supports compressed GLB models
-- **Full Viewport**: Model fills entire browser window
-- **Proper Lighting**: Ambient and directional lighting for realistic appearance
-- **Shadow Support**: Enabled shadow mapping for depth
-- **Auto-Rotation**: Model rotates automatically until scroll is engaged
-- **Scroll Animation**: Smooth transition to target configuration with easing
+### **Interactive Feedback**
+- **Hover Effects**: Scale and opacity transitions
+- **Click Animations**: Visual feedback with sound
+- **Menu Animations**: Staggered item reveals
 
-## How to Use
+## 🔊 Sound System
 
-### Local Development Server (Required for GLB loading)
+### **Random Sound Selection**
+- **Multiple Variations**: 2 different click sounds for variety
+- **Smart Loading**: Asynchronous audio preloading
+- **Cross-Page Compatibility**: Consistent sound across all pages
+- **Performance Optimized**: Preloaded audio for instant playback
+
+### **Integration Points**
+- **UI Controls**: All buttons and interactive elements
+- **Slider Feedback**: Throttled sound for smooth control adjustment
+- **Menu Navigation**: Overlay menu interactions
+- **Grid Interactions**: Portfolio item clicks
+
+## 🎮 Control Panel (3D Viewer)
+
+### **Camera Controls**
+- **Position (X, Y, Z)**: Real-time camera positioning
+- **Range**: -10 to +10 units with 0.1 precision
+- **Live Updates**: Immediate visual feedback
+
+### **Model Controls**
+- **Position (X, Y, Z)**: Model positioning in 3D space
+- **Rotation (X, Y, Z)**: Rotation controls in radians (0 to 2π)
+- **Scale**: Uniform scaling from 0.1x to 5x
+- **Auto-Rotation Toggle**: Enable/disable automatic rotation
+
+### **State Management**
+- **Copy State**: Export current configuration as JSON
+- **Paste State**: Import and apply saved configurations
+- **Reset Function**: Restore default settings
+- **Visual Feedback**: Success/error indicators
+
+### **Animation Controls**
+- **Scroll Animation Toggle**: Enable/disable scroll-triggered animation
+- **Animation Progress**: Manual scrubbing control
+- **Real-time Feedback**: Live progress updates
+
+## 📱 Responsive Design
+
+### **Mobile Optimization**
+- **Touch Controls**: Optimized for touch interaction
+- **Adaptive Layouts**: Collapsible sidebars and grids
+- **Performance**: Optimized rendering for mobile devices
+- **Navigation**: Touch-friendly menu interactions
+
+### **Breakpoint System**
+- **Desktop**: Full feature set with control panel
+- **Tablet**: Simplified controls with responsive grids
+- **Mobile**: Streamlined interface with essential features
+
+## 🛠️ Technical Stack
+
+### **Frontend Technologies**
+- **HTML5**: Semantic markup with accessibility features
+- **CSS3**: Modern styling with CSS Grid, Flexbox, and custom properties
+- **JavaScript ES6+**: Modular architecture with async/await
+- **Three.js r152**: 3D graphics and WebGL rendering
+- **GSAP 3.12.2**: Professional animation library
+- **Anime.js 3.2.1**: Lightweight animation library
+
+### **3D & Graphics**
+- **WebGL**: Hardware-accelerated 3D rendering
+- **GLTFLoader**: Efficient 3D model loading
+- **DRACOLoader**: Compressed model support
+- **Raycasting**: Mouse interaction with 3D objects
+
+### **Performance Features**
+- **Module System**: ES6 modules for code organization
+- **Lazy Loading**: Efficient resource management
+- **Hardware Acceleration**: GPU-optimized rendering
+- **Memory Management**: Proper cleanup and disposal
+
+## 🚀 Getting Started
+
+### **Local Development**
 ```bash
 # Using Python (recommended)
 python -m http.server 3000
 
 # Using Node.js
 npx serve . -p 3000
+
+# Using PHP
+php -S localhost:3000
 ```
 
-Then visit `http://localhost:3000/`
+Visit `http://localhost:3000/`
 
-**Note**: The 3D model requires a local server due to CORS restrictions on GLB file loading.
+**Note**: 3D models require a local server due to CORS restrictions.
 
-## 3D Control Panel
+### **File Organization**
+- **Modular JavaScript**: Each page has its own JS module
+- **Shared Components**: Sound and menu systems are reusable
+- **Asset Management**: Organized by type and purpose
+- **Documentation**: Comprehensive guides for each system
 
-### Opening Controls
-1. **Wait for model to load** after the loading animation
-2. **Click the 🎛️ button** in the top-right corner
-3. **Use sliders** to adjust camera and model properties
-4. **Click × to close** the panel
+## 🎯 User Experience Flow
 
-### State Management Workflow
-1. **Adjust 3D settings** using the control sliders
-2. **Click "📋 Copy State"** to capture current configuration
-3. **Share the JSON** with others or save for later
-4. **Paste JSON** into the textarea and click "📥 Paste State" to restore
+### **Main Page (index.html)**
+1. **Loading Animation**: Staggered text reveal
+2. **3D Model Display**: Auto-rotating furniture model
+3. **Scroll Interaction**: Model animates to target position
+4. **Image Reveal**: Dining room image appears on scroll
+5. **Text Section**: Introduction text with 200px padding
+6. **Interactive Controls**: Full 3D manipulation panel
 
-### Example State JSON
-```json
-{
-  "version": "1.0",
-  "timestamp": "2025-01-29T18:35:06.123Z",
-  "camera": {
-    "x": 0,
-    "y": 0,
-    "z": 2
-  },
-  "model": {
-    "position": { "x": 0, "y": 0, "z": 0 },
-    "rotation": { "x": 0, "y": 1.5, "z": 0 },
-    "scale": 1.5
-  }
-}
+### **About Page (about.html)**
+1. **Split Layout**: Image gallery with product details
+2. **Interactive Elements**: Hover effects and click sounds
+3. **Product Information**: Tea tray collaboration details
+4. **Social Links**: Designer and studio connections
+
+### **Projects Page (projects.html)**
+1. **Sticky Sidebar**: Project navigation and descriptions
+2. **Image Grid**: Portfolio showcase with hover effects
+3. **Responsive Layout**: Adapts to screen size
+4. **Interactive Grid**: Click feedback and animations
+
+## 🔧 Customization
+
+### **3D Model Replacement**
+```javascript
+// Update model path in script.js
+loader.load('models/your-model.glb', function(gltf) {
+  // Model loading logic
+});
 ```
 
-## Technical Details
-
-### Dependencies
-- **Anime.js 3.2.1**: Word animation
-- **Three.js r152**: 3D model rendering
-- **GSAP 3.12.2**: ScrollTrigger for smooth scroll animations
-- **DRACOLoader**: Loading compressed .glb models
-- **Object Sans Font**: Typography
-- **Inter Font**: Main text
-
-### 3D Model Specifications
-- **File**: `models/form.glb` (39MB DRACO-compressed)
-- **Canvas Size**: Full viewport (100vw × 100vh)
-- **Camera**: PerspectiveCamera with 75° FOV
-- **Lighting**: Ambient (0.6) + Directional (0.8)
-- **Position**: Center viewport with auto-rotation
-- **Interaction**: Auto-rotation until scroll, then animated to target position
-- **Target Config**: Predefined position, rotation, and scale for scroll animation
-
-### Animation Timing & Scroll Behavior
-- **3D Model**: Loads immediately and rotates automatically
-- **Word Animation**: 1000ms duration with 150ms stagger
-- **Auto Animation**: 3 seconds with EaseInOutCubic easing
-- **Image Reveal**: Scroll-controlled with real-time easing
-- **Text Section**: Appears with 200px padding after image
-- **Scroll Height**: 300vh total for 3 distinct stages
-
-### State Management
-- **Format**: JSON with version and timestamp
-- **Storage**: Browser clipboard API
-- **Validation**: JSON parsing with error handling
-- **Feedback**: Visual success/error indicators
-- **Persistence**: States can be saved and shared externally
-
-### Performance & Scroll Experience
-- **3D Rendering**: 60fps WebGL with hardware acceleration
-- **Model Optimization**: DRACO compression for reduced file size
-- **Scroll Performance**: Smooth 60fps scroll animations with easing
-- **Image Loading**: Preloaded for instant reveal
-- **Responsive Controls**: Auto-resize with viewport changes
-- **Memory Management**: Proper cleanup and disposal
-
-## Customization
-
-### 3D Model
-Replace `models/form.glb` with your own GLB file:
-
+### **Sound System Extension**
+```javascript
+// Add new sounds in sound.js
+this.availableSounds = [
+  'sprite/audiomass-output 1.wav',
+  'sprite/audiomass-output 2.wav',
+  'sprite/your-new-sound.wav'  // Add here
+];
 ```
+
+### **Animation Configuration**
+```javascript
+// Adjust scroll animation in script.js
+const scrollTargetConfig = {
+  camera: { x: -0.5, y: -3.3, z: 3.9 },
+  model: { position: { x: -0.8, y: -5.7, z: -8.9 } }
+};
+```
+
+## 📊 Performance Metrics
+
+### **File Sizes**
+- **Main Model**: 8.5MB (form.glb)
+- **Alternative Model**: 23MB (form2.glb)
+- **Images**: 6MB total
+- **Audio**: 43KB total
+- **CSS**: 1078 lines, optimized
+- **JavaScript**: 2336 lines total, modular
+
+### **Loading Performance**
+- **3D Model**: Loads asynchronously with progress tracking
+- **Audio**: Preloaded for instant playback
+- **Images**: Optimized for web delivery
+- **Animations**: Hardware-accelerated rendering
+
+## 🔮 Future Enhancements
+
+### **Planned Features**
+- **Multiple 3D Models**: Model switching system
+- **Advanced Animations**: Complex animation sequences
+- **User Accounts**: Saved configurations and preferences
+- **E-commerce Integration**: Product purchasing system
+- **AR/VR Support**: Extended reality experiences
+
+### **Technical Improvements**
+- **PWA Support**: Progressive web app features
+- **Offline Capability**: Service worker implementation
+- **Performance Monitoring**: Real-time metrics tracking
+- **Accessibility**: Enhanced screen reader support
+
+## 📝 Development Notes
+
+### **Code Architecture**
+- **Modular Design**: Reusable components across pages
+- **Event-Driven**: Clean separation of concerns
+- **Error Handling**: Graceful fallbacks and user feedback
+- **Documentation**: Comprehensive inline comments
+
+### **Browser Compatibility**
+- **Modern Browsers**: Chrome, Firefox, Safari, Edge
+- **Mobile Support**: iOS Safari, Chrome Mobile
+- **Fallback Support**: Graceful degradation for older browsers
+- **Performance**: Optimized for 60fps rendering
+
+---
+
+**Perfect for furniture studios, design agencies, and interactive product showcases! 🎨✨**
+
+*Built with modern web technologies and optimized for performance and user experience.*
