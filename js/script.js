@@ -410,10 +410,7 @@ function initDragControls() {
     if (camera && model) {
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObject(model, true);
-      // Update mouse info only if not hidden
-      if (!mouseInfo || !mouseInfo.dataset.hidden) {
-        updateMouseInfo(event, intersects);
-      }
+      updateMouseInfo(event, intersects);
     }
     
     // Handle rotation dragging
@@ -439,14 +436,14 @@ function initDragControls() {
   // Pointer leave event
   canvas.addEventListener('pointerleave', () => {
     isDragging = false;
-    if (mouseInfo && !mouseInfo.dataset.hidden) {
+    if (mouseInfo) {
       mouseInfo.style.display = 'none';
     }
   });
   
   // Pointer enter event
   canvas.addEventListener('pointerenter', () => {
-    if (mouseInfo && !mouseInfo.dataset.hidden) {
+    if (mouseInfo) {
       mouseInfo.style.display = 'block';
     }
   });
@@ -517,7 +514,27 @@ function initScrollAnimation() {
                  startModelAnimationTo100();
                }
                
+               // Hold page at 0% during animation - prevent any scrolling
+               if (userScrollTriggered) {
+                 // Force page to stay at 0% regardless of scroll attempts
+                 if (window.scrollY !== 0) {
+                   window.scrollTo({
+                     top: 0,
+                     behavior: 'auto'
+                   });
+                 }
+               }
+               
                return; // Exit early - don't process other scroll logic during model animation
+             }
+             
+             // Handle reverse animation when scrolling up after completion
+             if (modelScrollCompleted && scrollPercent === 0) {
+               // User scrolled back to top - start reverse animation
+               if (!isModelAnimationPlaying) {
+                 console.log('⬆️ User scrolled up (GSAP) - starting reverse animation from 100% to 0%');
+                 startReverseAnimation();
+               }
              }
             
             // Stop auto-rotation when scroll animation is active
@@ -1342,7 +1359,7 @@ function createDocumentStructure() {
     position: relative;
     width: 100vw;
     min-height: 100vh;
-    background: #ffffff;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -1693,6 +1710,8 @@ function updateOverlayPanel() {
 /**
  * Handle scroll behavior during model animation phase
  * Detects first scroll and plays animation to 100% at same position
+ * Handles reverse animation when scrolling up after completion
+ * Holds page scroll at 0% until animation reaches 100%
  */
 function handleModelScrollBehavior(scrollY) {
   // Detect first scroll event
@@ -1707,12 +1726,24 @@ function handleModelScrollBehavior(scrollY) {
     startModelAnimationTo100();
   }
   
-  // Keep page at initial position during animation
-  if (userScrollTriggered && !modelScrollCompleted && window.scrollY > 0) {
-    window.scrollTo({
-      top: 0,
-      behavior: 'auto'
-    });
+  // Handle reverse animation when scrolling up after completion
+  if (modelScrollCompleted && scrollY === 0) {
+    // User scrolled back to top - start reverse animation
+    if (!isModelAnimationPlaying) {
+      console.log('⬆️ User scrolled up - starting reverse animation from 100% to 0%');
+      startReverseAnimation();
+    }
+  }
+  
+  // Hold page at 0% during forward animation - prevent any scrolling
+  if (userScrollTriggered && !modelScrollCompleted) {
+    // Force page to stay at 0% regardless of scroll attempts
+    if (window.scrollY !== 0) {
+      window.scrollTo({
+        top: 0,
+        behavior: 'auto'
+      });
+    }
   }
 }
 
@@ -1793,6 +1824,9 @@ function startModelAnimationTo100() {
       // Animation complete
       console.log('✅ Model animation completed to 100%');
       
+      // Stop rotation when animation reaches 100%
+      isRotating = false;
+      
       // Mark model scroll as completed
       modelScrollCompleted = true;
       
@@ -1807,6 +1841,100 @@ function startModelAnimationTo100() {
   
   // Start the animation
   requestAnimationFrame(animateModel);
+}
+
+/**
+ * Start reverse animation from 100% back to 0%
+ */
+function startReverseAnimation() {
+  if (isModelAnimationPlaying || !model || !scrollAnimation) return;
+  
+  isModelAnimationPlaying = true;
+  console.log('🎬 Starting reverse animation from 100% to 0%');
+  
+  // Disable user scrolling during reverse animation
+  document.body.style.overflow = 'hidden';
+  
+  // Get start and target states (reversed)
+  const startPos = scrollTargetConfig.model.position; // Start from target (100%)
+  const targetPos = scrollStartPosition; // End at initial (0%)
+  const startRot = scrollTargetConfig.model.rotation; // Start from target rotation
+  const targetRot = scrollStartRotation; // End at initial rotation
+  const startScale = scrollTargetConfig.model.scale; // Start from target scale
+  const targetScale = scrollStartScale; // End at initial scale
+  
+  const startCam = scrollTargetConfig.camera; // Start from target camera
+  const targetCam = defaultConfig.camera; // End at initial camera
+  
+  // Start time for reverse animation
+  const startTime = Date.now();
+  
+  // Reverse animation loop
+  function animateReverse() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / autoScrollDuration, 1);
+    
+    // Apply easing (easeInOutCubic)
+    const easedProgress = progress < 0.5 
+      ? 4 * progress * progress * progress 
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+    
+    // Reverse the progress (1 - easedProgress to go backwards)
+    const reverseProgress = 1 - easedProgress;
+    modelAnimationProgress = reverseProgress;
+    
+    // Update model position with easing (reversed)
+    model.position.x = startPos.x + (targetPos.x - startPos.x) * easedProgress;
+    model.position.y = startPos.y + (targetPos.y - startPos.y) * easedProgress;
+    model.position.z = startPos.z + (targetPos.z - startPos.z) * easedProgress;
+    
+    // Update model rotation with easing (reversed)
+    model.rotation.x = startRot.x + (targetRot.x - startRot.x) * easedProgress;
+    model.rotation.y = startRot.y + (targetRot.y - startRot.y) * easedProgress;
+    model.rotation.z = startRot.z + (targetRot.z - startRot.z) * easedProgress;
+    
+    // Update model scale with easing (reversed)
+    model.scale.setScalar(startScale + (targetScale - startScale) * easedProgress);
+    
+    // Update camera position with easing (reversed)
+    if (camera) {
+      camera.position.x = startCam.x + (targetCam.x - startCam.x) * easedProgress;
+      camera.position.y = startCam.y + (targetCam.y - startCam.y) * easedProgress;
+      camera.position.z = startCam.z + (targetCam.z - startCam.z) * easedProgress;
+    }
+    
+    // Update model animations if available (reversed)
+    if (scrollAnimation && animations.length > 0) {
+      const animationTime = reverseProgress * animations[0].duration;
+      scrollAnimation.time = animationTime;
+      if (mixer) mixer.update(0);
+    }
+    
+    // Update control panel sliders
+    updateControlSliders();
+    
+    // Continue reverse animation if not complete
+    if (progress < 1) {
+      requestAnimationFrame(animateReverse);
+    } else {
+      // Reverse animation complete
+      console.log('✅ Reverse animation completed - model back to 0%');
+      
+      // Reset model scroll completion state
+      modelScrollCompleted = false;
+      userScrollTriggered = false;
+      
+      // Re-enable page scrolling
+      document.body.style.overflow = 'auto';
+      console.log('🔓 Page scrolling enabled - ready for new forward animation');
+      
+      // Reset animation state
+      isModelAnimationPlaying = false;
+    }
+  }
+  
+  // Start the reverse animation
+  requestAnimationFrame(animateReverse);
 }
 
 /**
@@ -2215,9 +2343,6 @@ function initApp() {
   // Create overlay panel
   createOverlayPanel();
   
-  // Hide UI elements initially
-  hideUIElements();
-  
   console.log('✅ 3D Viewer Application initialized successfully');
 }
 
@@ -2226,76 +2351,10 @@ document.addEventListener('DOMContentLoaded', initApp);
 
 
 
-/**
- * Hide UI elements (scroll indicator, mouse info, overlay panel, gear icon)
- */
-function hideUIElements() {
-  // Hide scroll indicator
-  if (scrollIndicator) {
-    scrollIndicator.style.display = 'none';
-    scrollIndicatorActive = false;
-  }
-  
-  // Hide mouse info and prevent it from showing on pointer events
-  if (mouseInfo) {
-    mouseInfo.style.display = 'none';
-    // Add a flag to prevent showing on pointer events
-    mouseInfo.dataset.hidden = 'true';
-  }
-  
-  // Hide overlay panel
-  if (overlayPanel) {
-    overlayPanel.style.display = 'none';
-    overlayPanelActive = false;
-  }
-  
-  // Hide gear icon (control toggle)
-  const controlToggle = document.getElementById('controlToggle');
-  if (controlToggle) {
-    controlToggle.style.display = 'none';
-  }
-  
-  console.log('👁️ UI elements hidden');
-}
-
-/**
- * Show UI elements (scroll indicator, mouse info, overlay panel, gear icon)
- */
-function showUIElements() {
-  // Show scroll indicator
-  if (scrollIndicator) {
-    scrollIndicator.style.display = 'block';
-    scrollIndicatorActive = true;
-  }
-  
-  // Show mouse info and enable pointer events
-  if (mouseInfo) {
-    mouseInfo.style.display = 'block';
-    // Remove the hidden flag to allow showing on pointer events
-    delete mouseInfo.dataset.hidden;
-  }
-  
-  // Show overlay panel
-  if (overlayPanel) {
-    overlayPanel.style.display = 'block';
-    overlayPanelActive = true;
-  }
-  
-  // Show gear icon (control toggle)
-  const controlToggle = document.getElementById('controlToggle');
-  if (controlToggle) {
-    controlToggle.style.display = 'block';
-  }
-  
-  console.log('👁️ UI elements shown');
-}
-
 // Export functions for potential external use
 export {
   initApp,
   getCurrentState,
   applyState,
-  soundManager,
-  hideUIElements,
-  showUIElements
+  soundManager
 };
